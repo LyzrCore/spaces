@@ -1,7 +1,7 @@
 """
 Shared UI components for consistent styling across all apps.
 
-Provides reusable layout components: navbar, sidebar, footer.
+Provides reusable layout components: navbar links and footer.
 """
 
 import gradio as gr
@@ -36,22 +36,6 @@ def get_navbar_links(current_app_id: str) -> list[tuple[str, str]]:
                 if url:
                     links.append((app_info["name"], url))
     return links
-
-
-def create_sidebar_content(pages: list[tuple[str, str]], current_path: str = "/") -> None:
-    """
-    Create sidebar content with page navigation links.
-
-    Args:
-        pages: List of (page_name, page_path) tuples
-        current_path: Current page path to highlight
-    """
-    gr.Markdown("### Pages")
-    for name, path in pages:
-        if path == current_path:
-            gr.Markdown(f"**{name}**")
-        else:
-            gr.Markdown(f"[{name}]({path})")
 
 
 def create_footer() -> gr.Markdown:

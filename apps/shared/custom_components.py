@@ -3,8 +3,9 @@ Base App Class for consistent app structure across the ecosystem.
 
 Provides a base class that handles:
 - Multi-page routing with gr.Blocks.route()
-- Consistent layout with navbar, sidebar, and footer
+- Consistent layout with navbar and footer
 - Cross-app navigation
+- HuggingFace OAuth login support
 """
 
 from abc import ABC, abstractmethod
@@ -14,10 +15,10 @@ import gradio as gr
 # Support both local and HF Spaces imports
 try:
     from config.app_registry import get_app_info
-    from apps.shared.ui_components import get_navbar_links, create_sidebar_content, create_footer
+    from apps.shared.ui_components import get_navbar_links, create_footer
 except ImportError:
     from config.app_registry import get_app_info
-    from shared.ui_components import get_navbar_links, create_sidebar_content, create_footer
+    from shared.ui_components import get_navbar_links, create_footer
 
 
 class AppBase(ABC):
@@ -25,7 +26,7 @@ class AppBase(ABC):
     Base class for all apps in the ecosystem.
 
     Provides multi-page routing with consistent layout including
-    navbar (cross-app), sidebar (in-app pages), and footer.
+    navbar (cross-app navigation) and footer.
     """
 
     def __init__(self, app_id: str, title: str, description: str | None = None):
@@ -54,7 +55,7 @@ class AppBase(ABC):
         Register a page for this app.
 
         Args:
-            name: Display name for the page (shown in sidebar)
+            name: Display name for the page (shown in navbar)
             path: URL path for the page (e.g., "/", "/settings")
             build_fn: Function that builds the page content
         """
@@ -64,13 +65,12 @@ class AppBase(ABC):
         """Get list of (name, path) for all pages."""
         return [(name, path) for name, path, _ in self._pages]
 
-    def _build_page_with_layout(self, build_fn: Callable, current_path: str, navbar_links: list) -> None:
+    def _build_page_with_layout(self, build_fn: Callable, navbar_links: list) -> None:
         """
         Build a page wrapped in the standard layout.
 
         Args:
             build_fn: Function that builds the page content
-            current_path: Current page path for sidebar highlighting
             navbar_links: Links for the navbar
         """
         # Top navbar with cross-app navigation
@@ -79,12 +79,13 @@ class AppBase(ABC):
             main_page_name=self.title,
         )
 
-        with gr.Sidebar():
-            gr.Markdown(f"## {self.title}")
-            if self.description:
-                gr.Markdown(f"*{self.description}*")
-            gr.Markdown("---")
-            create_sidebar_content(self.get_page_list(), current_path)
+        # Login button for HuggingFace OAuth
+        with gr.Row():
+            with gr.Column(scale=4):
+                if self.description:
+                    gr.Markdown(f"*{self.description}*")
+            with gr.Column(scale=1, min_width=150):
+                gr.LoginButton()
 
         # Main content area
         build_fn()
@@ -127,12 +128,12 @@ class AppBase(ABC):
         main_name, main_path, main_build_fn = self._pages[0]
 
         with gr.Blocks(title=self.title) as demo:
-            self._build_page_with_layout(main_build_fn, main_path, navbar_links)
+            self._build_page_with_layout(main_build_fn, navbar_links)
 
         # Build additional pages with routes (outside the Blocks context)
         for name, path, build_fn in self._pages[1:]:
             with demo.route(name, path):
-                self._build_page_with_layout(build_fn, path, navbar_links)
+                self._build_page_with_layout(build_fn, navbar_links)
 
         return demo
 
