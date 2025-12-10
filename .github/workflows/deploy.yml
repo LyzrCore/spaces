@@ -1,0 +1,122 @@
+name: Deploy to HuggingFace Spaces
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 'Deploy all apps'
+        type: boolean
+        default: false
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      dashboard: ${{ steps.changes.outputs.dashboard }}
+      analytics: ${{ steps.changes.outputs.analytics }}
+      shared: ${{ steps.changes.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [ "${{ github.event.inputs.force_all }}" == "true" ]; then
+            echo "dashboard=true" >> $GITHUB_OUTPUT
+            echo "analytics=true" >> $GITHUB_OUTPUT
+            echo "shared=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+
+          # Check shared code changes
+          if echo "$CHANGED" | grep -qE "^(apps/shared/|config/|requirements\.txt)"; then
+            echo "shared=true" >> $GITHUB_OUTPUT
+            echo "dashboard=true" >> $GITHUB_OUTPUT
+            echo "analytics=true" >> $GITHUB_OUTPUT
+          else
+            echo "shared=false" >> $GITHUB_OUTPUT
+            echo "dashboard=$(echo "$CHANGED" | grep -q "^apps/dashboard/" && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "analytics=$(echo "$CHANGED" | grep -q "^apps/analytics/" && echo true || echo false)" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-dashboard:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dashboard == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Deploy dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          TEMP=$(mktemp -d)
+
+          # Copy app + shared + config
+          cp -r apps/dashboard/* $TEMP/
+          cp -r apps/shared $TEMP/
+          mkdir -p $TEMP/config && cp -r config/* $TEMP/config/
+          cp requirements.txt $TEMP/requirements_root.txt
+          sed -i 's|-r ../../requirements.txt|-r requirements_root.txt|g' $TEMP/requirements.txt
+
+          # Push to HF Space
+          cd $TEMP
+          git init
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add .
+          git commit -m "Deploy dashboard from ${{ github.sha }}"
+          git push --force https://lyzr-ai:$HF_TOKEN@huggingface.co/spaces/lyzr-ai/dashboard main
+
+      - name: Summary
+        run: |
+          echo "## Dashboard Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- HF Space: https://huggingface.co/spaces/lyzr-ai/dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://dashboard.lyzr.space" >> $GITHUB_STEP_SUMMARY
+
+  deploy-analytics:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.analytics == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Deploy analytics
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          TEMP=$(mktemp -d)
+
+          # Copy app + shared + config
+          cp -r apps/analytics/* $TEMP/
+          cp -r apps/shared $TEMP/
+          mkdir -p $TEMP/config && cp -r config/* $TEMP/config/
+          cp requirements.txt $TEMP/requirements_root.txt
+          sed -i 's|-r ../../requirements.txt|-r requirements_root.txt|g' $TEMP/requirements.txt
+
+          # Push to HF Space
+          cd $TEMP
+          git init
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add .
+          git commit -m "Deploy analytics from ${{ github.sha }}"
+          git push --force https://lyzr-ai:$HF_TOKEN@huggingface.co/spaces/lyzr-ai/analytics main
+
+      - name: Summary
+        run: |
+          echo "## Analytics Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "- HF Space: https://huggingface.co/spaces/lyzr-ai/analytics" >> $GITHUB_STEP_SUMMARY
+          echo "- URL: https://analytics.lyzr.space" >> $GITHUB_STEP_SUMMARY

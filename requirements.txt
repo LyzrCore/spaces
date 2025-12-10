@@ -1,0 +1,4 @@
+gradio>=5.0.0
+gradio-client>=1.6.0
+requests>=2.32.0
+pyyaml>=6.0
