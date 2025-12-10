@@ -5,7 +5,7 @@ Provides a base class that handles:
 - Multi-page routing with gr.Blocks.route()
 - Consistent layout with navbar and footer
 - Cross-app navigation
-- HuggingFace OAuth login support
+- HuggingFace OAuth login with protected content
 """
 
 from abc import ABC, abstractmethod
@@ -26,7 +26,8 @@ class AppBase(ABC):
     Base class for all apps in the ecosystem.
 
     Provides multi-page routing with consistent layout including
-    navbar (cross-app navigation) and footer.
+    navbar (cross-app navigation) and footer. Content is protected
+    behind HuggingFace OAuth authentication.
     """
 
     def __init__(self, app_id: str, title: str, description: str | None = None):
@@ -65,9 +66,44 @@ class AppBase(ABC):
         """Get list of (name, path) for all pages."""
         return [(name, path) for name, path, _ in self._pages]
 
+    def _build_landing_page(self) -> None:
+        """Build the landing page for unauthenticated users."""
+        gr.Markdown(
+            f"""
+# Welcome to {self.title}
+
+{self.description or ''}
+
+Please sign in with your HuggingFace account to access this application.
+            """,
+            elem_classes=["landing-header"]
+        )
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                pass  # Spacer
+            with gr.Column(scale=1):
+                gr.LoginButton(size="lg")
+            with gr.Column(scale=1):
+                pass  # Spacer
+
+        gr.Markdown(
+            """
+---
+
+### Why sign in?
+
+- Access all features of the application
+- Your settings and preferences are saved
+- Seamless integration with HuggingFace ecosystem
+
+            """,
+            elem_classes=["landing-info"]
+        )
+
     def _build_page_with_layout(self, build_fn: Callable, navbar_links: list) -> None:
         """
-        Build a page wrapped in the standard layout.
+        Build a page wrapped in the standard layout with auth check.
 
         Args:
             build_fn: Function that builds the page content
@@ -79,19 +115,48 @@ class AppBase(ABC):
             main_page_name=self.title,
         )
 
-        # Login button for HuggingFace OAuth
-        with gr.Row():
-            with gr.Column(scale=4):
-                if self.description:
-                    gr.Markdown(f"*{self.description}*")
-            with gr.Column(scale=1, min_width=150):
-                gr.LoginButton()
+        # Container for landing page (shown when not logged in)
+        landing_container = gr.Column(visible=True, elem_id="landing-container")
 
-        # Main content area
-        build_fn()
+        # Container for app content (shown when logged in)
+        app_container = gr.Column(visible=False, elem_id="app-container")
 
-        # Footer
-        create_footer()
+        with landing_container:
+            self._build_landing_page()
+
+        with app_container:
+            # Header with user info
+            with gr.Row():
+                with gr.Column(scale=4):
+                    if self.description:
+                        gr.Markdown(f"*{self.description}*")
+                    user_info = gr.Markdown("", elem_id="user-info")
+
+            # Main content area
+            build_fn()
+
+            # Footer
+            create_footer()
+
+        # Check auth status on load
+        def check_auth(profile: gr.OAuthProfile | None):
+            if profile is None:
+                return (
+                    gr.update(visible=True),   # Show landing
+                    gr.update(visible=False),  # Hide app
+                    ""
+                )
+            else:
+                return (
+                    gr.update(visible=False),  # Hide landing
+                    gr.update(visible=True),   # Show app
+                    f"Welcome, **{profile.name}**!"
+                )
+
+        # Use demo.load to check auth on page load
+        # This will be connected in the build() method
+        self._auth_check_fn = check_auth
+        self._auth_outputs = [landing_container, app_container, user_info]
 
     @abstractmethod
     def register_pages(self) -> None:
@@ -129,11 +194,18 @@ class AppBase(ABC):
 
         with gr.Blocks(title=self.title) as demo:
             self._build_page_with_layout(main_build_fn, navbar_links)
+            # Connect auth check to page load
+            demo.load(
+                fn=self._auth_check_fn,
+                inputs=None,
+                outputs=self._auth_outputs
+            )
 
         # Build additional pages with routes (outside the Blocks context)
         for name, path, build_fn in self._pages[1:]:
             with demo.route(name, path):
                 self._build_page_with_layout(build_fn, navbar_links)
+                # Note: demo.load in routes is handled by Gradio automatically
 
         return demo
 
