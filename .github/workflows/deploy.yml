@@ -55,6 +55,26 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create HF Space if needed
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi()
+          try:
+              api.create_repo('lyzr-ai/dashboard', repo_type='space', space_sdk='gradio', exist_ok=True)
+              print('Space ready: lyzr-ai/dashboard')
+          except Exception as e:
+              print(f'Space creation note: {e}')
+          "
+
       - name: Deploy dashboard
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -70,7 +90,7 @@ jobs:
 
           # Push to HF Space
           cd $TEMP
-          git init
+          git init -b main
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add .
@@ -93,6 +113,26 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create HF Space if needed
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi()
+          try:
+              api.create_repo('lyzr-ai/analytics', repo_type='space', space_sdk='gradio', exist_ok=True)
+              print('Space ready: lyzr-ai/analytics')
+          except Exception as e:
+              print(f'Space creation note: {e}')
+          "
+
       - name: Deploy analytics
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -108,7 +148,7 @@ jobs:
 
           # Push to HF Space
           cd $TEMP
-          git init
+          git init -b main
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add .
