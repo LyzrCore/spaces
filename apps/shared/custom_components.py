@@ -9,8 +9,14 @@ Provides a base class that handles:
 
 from abc import ABC, abstractmethod
 import gradio as gr
-from config.app_registry import get_app_info
-from apps.shared.ui_components import header, footer, navigation
+
+# Support both local and HF Spaces imports
+try:
+    from config.app_registry import get_app_info
+    from apps.shared.ui_components import header, footer, navigation
+except ImportError:
+    from config.app_registry import get_app_info
+    from shared.ui_components import header, footer, navigation
 
 
 class AppBase(ABC):

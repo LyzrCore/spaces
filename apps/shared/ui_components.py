@@ -5,8 +5,17 @@ Provides reusable header, footer, and navigation components.
 """
 
 import gradio as gr
-from config.app_registry import APPS_REGISTRY, get_app_info, get_all_apps
-from config.settings import get_app_url
+
+# Support both local and HF Spaces imports
+try:
+    from config.app_registry import APPS_REGISTRY, get_app_info, get_all_apps
+    from config.settings import get_app_url
+except ImportError:
+    # When running on HF Spaces, config is at root level
+    import sys
+    sys.path.insert(0, "/app")
+    from config.app_registry import APPS_REGISTRY, get_app_info, get_all_apps
+    from config.settings import get_app_url
 
 
 def header(title: str, subtitle: str | None = None) -> gr.Markdown:

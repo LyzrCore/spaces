@@ -5,12 +5,18 @@ Dashboard - Main dashboard application.
 import sys
 from pathlib import Path
 
-# Add project root to path for imports
+# Add project root to path for local development
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import gradio as gr
-from apps.shared.custom_components import AppBase
-from config.settings import LOCAL_PORTS
+
+# Support both local (apps.shared) and HF Spaces (shared) imports
+try:
+    from apps.shared.custom_components import AppBase
+    from config.settings import LOCAL_PORTS
+except ImportError:
+    from shared.custom_components import AppBase
+    from config.settings import LOCAL_PORTS
 
 
 class DashboardApp(AppBase):
