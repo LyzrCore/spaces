@@ -85,8 +85,11 @@ jobs:
           cp -r apps/dashboard/* $TEMP/
           cp -r apps/shared $TEMP/
           mkdir -p $TEMP/config && cp -r config/* $TEMP/config/
-          cp requirements.txt $TEMP/requirements_root.txt
-          sed -i 's|-r ../../requirements.txt|-r requirements_root.txt|g' $TEMP/requirements.txt
+
+          # Merge requirements: replace -r reference with actual content
+          cat requirements.txt > $TEMP/requirements.txt
+          # Append app-specific requirements (skip the -r line)
+          grep -v "^-r " apps/dashboard/requirements.txt >> $TEMP/requirements.txt || true
 
           # Push to HF Space
           cd $TEMP
@@ -143,8 +146,11 @@ jobs:
           cp -r apps/analytics/* $TEMP/
           cp -r apps/shared $TEMP/
           mkdir -p $TEMP/config && cp -r config/* $TEMP/config/
-          cp requirements.txt $TEMP/requirements_root.txt
-          sed -i 's|-r ../../requirements.txt|-r requirements_root.txt|g' $TEMP/requirements.txt
+
+          # Merge requirements: replace -r reference with actual content
+          cat requirements.txt > $TEMP/requirements.txt
+          # Append app-specific requirements (skip the -r line)
+          grep -v "^-r " apps/analytics/requirements.txt >> $TEMP/requirements.txt || true
 
           # Push to HF Space
           cd $TEMP
