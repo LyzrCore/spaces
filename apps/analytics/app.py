@@ -85,10 +85,17 @@ class AnalyticsApp(AppBase):
 
 
 if __name__ == "__main__":
+    from config.settings import is_dev_mode
+
     app = AnalyticsApp(
         app_id="analytics",
         title="Analytics",
         description="View and analyze your data",
     )
     demo = app.build()
-    demo.launch(server_port=LOCAL_PORTS.get("analytics", 7863))
+
+    # Only specify port in dev mode; HF Spaces manages ports automatically
+    if is_dev_mode():
+        demo.launch(server_port=LOCAL_PORTS.get("analytics", 7861))
+    else:
+        demo.launch()

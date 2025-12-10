@@ -62,10 +62,17 @@ class DashboardApp(AppBase):
 
 
 if __name__ == "__main__":
+    from config.settings import is_dev_mode
+
     app = DashboardApp(
         app_id="dashboard",
         title="Dashboard",
         description="Main dashboard for the Lyzr ecosystem",
     )
     demo = app.build()
-    demo.launch(server_port=LOCAL_PORTS.get("dashboard", 7860))
+
+    # Only specify port in dev mode; HF Spaces manages ports automatically
+    if is_dev_mode():
+        demo.launch(server_port=LOCAL_PORTS.get("dashboard", 7860))
+    else:
+        demo.launch()
