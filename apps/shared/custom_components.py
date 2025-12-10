@@ -5,7 +5,6 @@ Provides a base class that handles:
 - Multi-page routing with gr.Blocks.route()
 - Consistent layout with navbar and footer
 - Cross-app navigation
-- HuggingFace OAuth login with protected content
 """
 
 from abc import ABC, abstractmethod
@@ -26,8 +25,7 @@ class AppBase(ABC):
     Base class for all apps in the ecosystem.
 
     Provides multi-page routing with consistent layout including
-    navbar (cross-app navigation) and footer. Content is protected
-    behind HuggingFace OAuth authentication.
+    navbar (cross-app navigation) and footer.
     """
 
     def __init__(self, app_id: str, title: str, description: str | None = None):
@@ -66,129 +64,29 @@ class AppBase(ABC):
         """Get list of (name, path) for all pages."""
         return [(name, path) for name, path, _ in self._pages]
 
-    def _get_landing_css(self) -> str:
-        """Get CSS for the centered modal landing page."""
-        return """
-        #landing-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 70vh;
-        }
-        #login-modal {
-            background: var(--background-fill-primary);
-            border: 1px solid var(--border-color-primary);
-            border-radius: 12px;
-            padding: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            text-align: center;
-        }
-        #login-modal h2 {
-            margin-bottom: 0.5rem;
-        }
-        #login-modal p {
-            color: var(--body-text-color-subdued);
-            margin-bottom: 1.5rem;
-        }
-        .login-features {
-            text-align: left;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color-primary);
-        }
-        .login-features ul {
-            margin: 0.5rem 0;
-            padding-left: 1.5rem;
-            color: var(--body-text-color-subdued);
-        }
-        """
-
-    def _build_landing_page(self) -> None:
-        """Build the landing page as a centered modal."""
-        # Centered modal: 30% spacer | 40% modal | 30% spacer
-        with gr.Row():
-            with gr.Column(scale=3, min_width=0):
-                pass  # Left spacer
-            with gr.Column(scale=4, min_width=300, elem_id="login-modal"):
-                gr.Markdown(f"## Welcome to {self.title}")
-                if self.description:
-                    gr.Markdown(f"{self.description}")
-                gr.Markdown("Sign in with your HuggingFace account to continue.")
-                gr.LoginButton(size="lg")
-                gr.Markdown(
-                    """
-<div class="login-features">
-
-**Why sign in?**
-- Access all features of the application
-- Your settings and preferences are saved
-- Seamless integration with HuggingFace ecosystem
-
-</div>
-                    """
-                )
-            with gr.Column(scale=3, min_width=0):
-                pass  # Right spacer
-
     def _build_page_with_layout(self, build_fn: Callable, navbar_links: list) -> None:
         """
-        Build a page wrapped in the standard layout with auth check.
+        Build a page wrapped in the standard layout.
 
         Args:
             build_fn: Function that builds the page content
             navbar_links: Links for the navbar
         """
-        # Inject CSS for landing modal
-        gr.HTML(f"<style>{self._get_landing_css()}</style>", visible=False)
-
         # Top navbar with cross-app navigation
         gr.Navbar(
             value=navbar_links,
             main_page_name=self.title,
         )
 
-        # Container for landing page (shown when not logged in)
-        landing_container = gr.Column(visible=True, elem_id="landing-container")
+        # Header with description
+        if self.description:
+            gr.Markdown(f"*{self.description}*")
 
-        # Container for app content (shown when logged in)
-        app_container = gr.Column(visible=False, elem_id="app-container")
+        # Main content area
+        build_fn()
 
-        with landing_container:
-            self._build_landing_page()
-
-        with app_container:
-            # Header with user info
-            with gr.Row():
-                with gr.Column(scale=4):
-                    if self.description:
-                        gr.Markdown(f"*{self.description}*")
-                    user_info = gr.Markdown("", elem_id="user-info")
-
-            # Main content area
-            build_fn()
-
-            # Footer
-            create_footer()
-
-        # Check auth status on load
-        def check_auth(profile: gr.OAuthProfile | None):
-            if profile is None:
-                return (
-                    gr.update(visible=True),   # Show landing
-                    gr.update(visible=False),  # Hide app
-                    ""
-                )
-            else:
-                return (
-                    gr.update(visible=False),  # Hide landing
-                    gr.update(visible=True),   # Show app
-                    f"Welcome, **{profile.name}**!"
-                )
-
-        # Use demo.load to check auth on page load
-        # This will be connected in the build() method
-        self._auth_check_fn = check_auth
-        self._auth_outputs = [landing_container, app_container, user_info]
+        # Footer
+        create_footer()
 
     @abstractmethod
     def register_pages(self) -> None:
@@ -226,18 +124,11 @@ class AppBase(ABC):
 
         with gr.Blocks(title=self.title) as demo:
             self._build_page_with_layout(main_build_fn, navbar_links)
-            # Connect auth check to page load
-            demo.load(
-                fn=self._auth_check_fn,
-                inputs=None,
-                outputs=self._auth_outputs
-            )
 
         # Build additional pages with routes (outside the Blocks context)
         for name, path, build_fn in self._pages[1:]:
             with demo.route(name, path):
                 self._build_page_with_layout(build_fn, navbar_links)
-                # Note: demo.load in routes is handled by Gradio automatically
 
         return demo
 
