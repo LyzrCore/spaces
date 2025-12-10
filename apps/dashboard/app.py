@@ -13,57 +13,94 @@ import gradio as gr
 # Support both local (apps.shared) and HF Spaces (shared) imports
 try:
     from apps.shared.custom_components import AppBase
-    from config.settings import LOCAL_PORTS
+    from config.settings import LOCAL_PORTS, is_dev_mode
 except ImportError:
     from shared.custom_components import AppBase
-    from config.settings import LOCAL_PORTS
+    from config.settings import LOCAL_PORTS, is_dev_mode
 
 
 class DashboardApp(AppBase):
-    """Main dashboard application."""
+    """Main dashboard application with Home and Settings pages."""
 
-    def build(self) -> gr.Blocks:
-        with gr.Blocks(title=self.title) as demo:
-            self.create_header()
+    def register_pages(self) -> None:
+        """Register all pages for the dashboard."""
+        self.add_page("Home", "/", self.build_home)
+        self.add_page("Settings", "/settings", self.build_settings)
 
-            gr.Markdown("## Welcome to the Dashboard")
-            gr.Markdown("This is the main dashboard. Use the navigation above to access other apps.")
+    def build_home(self) -> None:
+        """Build the home page content."""
+        gr.Markdown("## Welcome to the Dashboard")
+        gr.Markdown("This is the main dashboard. Use the sidebar to navigate between pages.")
 
-            with gr.Row():
-                with gr.Column():
-                    gr.Markdown("### Quick Stats")
-                    status_text = gr.Textbox(
-                        label="System Status",
-                        value="All systems operational",
-                        interactive=False,
-                    )
+        with gr.Row():
+            with gr.Column():
+                gr.Markdown("### Quick Stats")
+                status_text = gr.Textbox(
+                    label="System Status",
+                    value="All systems operational",
+                    interactive=False,
+                )
+                refresh_btn = gr.Button("Refresh Status", variant="primary")
 
-                with gr.Column():
-                    gr.Markdown("### Actions")
-                    refresh_btn = gr.Button("Refresh Status", variant="primary")
-                    message_input = gr.Textbox(
-                        label="Message",
-                        placeholder="Enter a message...",
-                    )
-                    message_output = gr.Textbox(label="Response", interactive=False)
+                def get_status() -> str:
+                    return "Dashboard is running - Status: OK"
 
-            def get_status() -> str:
-                return "Dashboard is running - Status: OK"
+                refresh_btn.click(fn=get_status, outputs=status_text)
 
-            def echo_message(message: str) -> str:
-                return f"You said: {message}"
+            with gr.Column():
+                gr.Markdown("### Quick Actions")
+                message_input = gr.Textbox(
+                    label="Message",
+                    placeholder="Enter a message...",
+                )
+                message_output = gr.Textbox(label="Response", interactive=False)
 
-            refresh_btn.click(fn=get_status, outputs=status_text)
-            message_input.submit(fn=echo_message, inputs=message_input, outputs=message_output)
+                def echo_message(message: str) -> str:
+                    return f"You said: {message}"
 
-            self.create_footer()
+                message_input.submit(fn=echo_message, inputs=message_input, outputs=message_output)
 
-        return demo
+    def build_settings(self) -> None:
+        """Build the settings page content."""
+        gr.Markdown("## Settings")
+        gr.Markdown("Configure your dashboard preferences here.")
+
+        with gr.Group():
+            gr.Markdown("### Display Settings")
+            theme = gr.Dropdown(
+                label="Theme",
+                choices=["Light", "Dark", "System"],
+                value="System",
+            )
+            notifications = gr.Checkbox(
+                label="Enable Notifications",
+                value=True,
+            )
+
+        with gr.Group():
+            gr.Markdown("### Data Settings")
+            refresh_interval = gr.Slider(
+                label="Auto-refresh Interval (seconds)",
+                minimum=5,
+                maximum=300,
+                value=30,
+                step=5,
+            )
+
+        save_btn = gr.Button("Save Settings", variant="primary")
+        status = gr.Textbox(label="Status", interactive=False)
+
+        def save_settings(theme_val, notif_val, interval_val):
+            return f"Settings saved: Theme={theme_val}, Notifications={notif_val}, Refresh={interval_val}s"
+
+        save_btn.click(
+            fn=save_settings,
+            inputs=[theme, notifications, refresh_interval],
+            outputs=status,
+        )
 
 
 if __name__ == "__main__":
-    from config.settings import is_dev_mode
-
     app = DashboardApp(
         app_id="dashboard",
         title="Dashboard",

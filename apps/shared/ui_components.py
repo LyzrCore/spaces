@@ -1,7 +1,7 @@
 """
 Shared UI components for consistent styling across all apps.
 
-Provides reusable header, footer, and navigation components.
+Provides reusable layout components: navbar, sidebar, footer.
 """
 
 import gradio as gr
@@ -11,71 +11,60 @@ try:
     from config.app_registry import APPS_REGISTRY, get_app_info, get_all_apps
     from config.settings import get_app_url
 except ImportError:
-    # When running on HF Spaces, config is at root level
     import sys
     sys.path.insert(0, "/app")
     from config.app_registry import APPS_REGISTRY, get_app_info, get_all_apps
     from config.settings import get_app_url
 
 
-def header(title: str, subtitle: str | None = None) -> gr.Markdown:
+def get_navbar_links(current_app_id: str) -> list[tuple[str, str]]:
     """
-    Create a header component with title and optional subtitle.
+    Generate navbar links for cross-app navigation.
 
     Args:
-        title: Main title text
-        subtitle: Optional subtitle/description
+        current_app_id: Current app's ID (excluded from links)
 
     Returns:
-        gr.Markdown component
+        List of (name, url) tuples for other apps
     """
-    content = f"# {title}"
-    if subtitle:
-        content += f"\n\n*{subtitle}*"
+    links = []
+    for app_id in get_all_apps():
+        if app_id != current_app_id:
+            app_info = get_app_info(app_id)
+            if app_info:
+                url = get_app_url(app_id)
+                if url:
+                    links.append((app_info["name"], url))
+    return links
 
-    return gr.Markdown(content)
+
+def create_sidebar_content(pages: list[tuple[str, str]], current_path: str = "/") -> None:
+    """
+    Create sidebar content with page navigation links.
+
+    Args:
+        pages: List of (page_name, page_path) tuples
+        current_path: Current page path to highlight
+    """
+    gr.Markdown("### Pages")
+    for name, path in pages:
+        if path == current_path:
+            gr.Markdown(f"**{name}**")
+        else:
+            gr.Markdown(f"[{name}]({path})")
 
 
-def footer() -> gr.Markdown:
+def create_footer() -> gr.Markdown:
     """
     Create a standard footer component.
 
     Returns:
         gr.Markdown component
     """
-    content = """
+    return gr.Markdown(
+        """
 ---
-
-**Powered by Lyzr** | [lyzr.space](https://lyzr.space)
-"""
-    return gr.Markdown(content)
-
-
-def navigation(current_app_id: str) -> gr.Markdown:
-    """
-    Create navigation links to all other apps.
-
-    Args:
-        current_app_id: Current app's ID (will be highlighted, not linked)
-
-    Returns:
-        gr.Markdown component with navigation links
-    """
-    lines: list[str] = ["---", "### All Apps", ""]
-
-    app_links = []
-    for app_id in get_all_apps():
-        app_info = get_app_info(app_id)
-        if app_info:
-            if app_id == current_app_id:
-                # Current app - bold, no link
-                app_links.append(f"**{app_info['name']}**")
-            else:
-                url = get_app_url(app_id)
-                app_links.append(f"[{app_info['name']}]({url})")
-
-    lines.append(" | ".join(app_links))
-    lines.append("")
-    lines.append("---")
-
-    return gr.Markdown("\n".join(lines))
+**Powered by Lyzr** | [lyzr.ai](https://lyzr.ai)
+""",
+        elem_classes=["footer"]
+    )
