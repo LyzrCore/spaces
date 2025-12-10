@@ -66,40 +66,69 @@ class AppBase(ABC):
         """Get list of (name, path) for all pages."""
         return [(name, path) for name, path, _ in self._pages]
 
+    def _get_landing_css(self) -> str:
+        """Get CSS for the centered modal landing page."""
+        return """
+        #landing-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 70vh;
+        }
+        #login-modal {
+            background: var(--background-fill-primary);
+            border: 1px solid var(--border-color-primary);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+        #login-modal h2 {
+            margin-bottom: 0.5rem;
+        }
+        #login-modal p {
+            color: var(--body-text-color-subdued);
+            margin-bottom: 1.5rem;
+        }
+        .login-features {
+            text-align: left;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color-primary);
+        }
+        .login-features ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+            color: var(--body-text-color-subdued);
+        }
+        """
+
     def _build_landing_page(self) -> None:
-        """Build the landing page for unauthenticated users."""
-        gr.Markdown(
-            f"""
-# Welcome to {self.title}
-
-{self.description or ''}
-
-Please sign in with your HuggingFace account to access this application.
-            """,
-            elem_classes=["landing-header"]
-        )
-
+        """Build the landing page as a centered modal."""
+        # Centered modal: 30% spacer | 40% modal | 30% spacer
         with gr.Row():
-            with gr.Column(scale=1):
-                pass  # Spacer
-            with gr.Column(scale=1):
+            with gr.Column(scale=3, min_width=0):
+                pass  # Left spacer
+            with gr.Column(scale=4, min_width=300, elem_id="login-modal"):
+                gr.Markdown(f"## Welcome to {self.title}")
+                if self.description:
+                    gr.Markdown(f"{self.description}")
+                gr.Markdown("Sign in with your HuggingFace account to continue.")
                 gr.LoginButton(size="lg")
-            with gr.Column(scale=1):
-                pass  # Spacer
+                gr.Markdown(
+                    """
+<div class="login-features">
 
-        gr.Markdown(
-            """
----
-
-### Why sign in?
-
+**Why sign in?**
 - Access all features of the application
 - Your settings and preferences are saved
 - Seamless integration with HuggingFace ecosystem
 
-            """,
-            elem_classes=["landing-info"]
-        )
+</div>
+                    """
+                )
+            with gr.Column(scale=3, min_width=0):
+                pass  # Right spacer
 
     def _build_page_with_layout(self, build_fn: Callable, navbar_links: list) -> None:
         """
@@ -109,6 +138,9 @@ Please sign in with your HuggingFace account to access this application.
             build_fn: Function that builds the page content
             navbar_links: Links for the navbar
         """
+        # Inject CSS for landing modal
+        gr.HTML(f"<style>{self._get_landing_css()}</style>", visible=False)
+
         # Top navbar with cross-app navigation
         gr.Navbar(
             value=navbar_links,
