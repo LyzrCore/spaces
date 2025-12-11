@@ -21,6 +21,12 @@ APPS_REGISTRY: dict[str, dict] = {
         "url": "https://analytics.lyzr.space",
         "description": "View and analyze your data",
     },
+    "it_service_desk": {
+        "name": "IT Service Desk",
+        "hf_space": "lyzr-ai/it-service-desk",
+        "url": "https://it-service-desk.lyzr.space",
+        "description": "AI-powered Incident Management System",
+    },
 }
 
 

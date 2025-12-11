@@ -13,6 +13,7 @@ ENVIRONMENT = os.getenv("APP_ENV", "prod")
 LOCAL_PORTS: dict[str, int] = {
     "dashboard": 7860,
     "analytics": 7861,
+    "it_service_desk": 7862,
 }
 
 
