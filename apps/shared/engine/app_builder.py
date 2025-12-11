@@ -79,8 +79,6 @@ class DemoApp:
     def build(self) -> gr.Blocks:
         """Build the complete Gradio application."""
         with gr.Blocks(title=self.config.title) as demo:
-            # Inject CSS via HTML component (Gradio 6.0 compatible)
-            gr.HTML(f"<style>{self._get_css()}</style>", visible=False)
             # State for current item (for detail views)
             current_item = gr.State(None)
 
@@ -90,11 +88,11 @@ class DemoApp:
             # Main layout: Sidebar + Content
             with gr.Row():
                 # Sidebar
-                with gr.Column(scale=1, min_width=200, elem_classes=["sidebar"]):
+                with gr.Column(scale=1, min_width=200):
                     self._build_sidebar()
 
                 # Content area
-                with gr.Column(scale=4, elem_classes=["content-area"]):
+                with gr.Column(scale=4):
                     # Build all pages as separate containers
                     page_containers = {}
                     for path, page_config in self.config.pages.items():
@@ -108,32 +106,10 @@ class DemoApp:
 
         return demo
 
-    def _get_css(self) -> str:
-        """Get custom CSS for the app."""
-        return """
-        .sidebar {
-            background: #f9fafb;
-            padding: 16px;
-            border-right: 1px solid #e5e7eb;
-            min-height: 70vh;
-        }
-        .sidebar-item {
-            width: 100%;
-            text-align: left !important;
-            justify-content: flex-start !important;
-            margin-bottom: 4px;
-        }
-        .content-area {
-            padding: 24px;
-        }
-        .page-header {
-            margin-bottom: 24px;
-        }
-        """
 
     def _build_header(self) -> None:
         """Build app header with title and links."""
-        with gr.Row(elem_classes=["page-header"]):
+        with gr.Row():
             with gr.Column(scale=3):
                 gr.Markdown(f"# {self.config.title}")
                 if self.config.description:
@@ -160,7 +136,6 @@ class DemoApp:
                 f"{icon} {label}".strip(),
                 variant="secondary",
                 size="sm",
-                elem_classes=["sidebar-item"],
             )
 
     def _build_page(self, path: str, page_config: dict) -> None:
@@ -271,6 +246,9 @@ class DemoApp:
     def launch(self, **kwargs) -> None:
         """Build and launch the app."""
         demo = self.build()
+        # Use Glass theme with light mode
+        if "theme" not in kwargs:
+            kwargs["theme"] = gr.themes.Glass()
         demo.launch(**kwargs)
 
 
