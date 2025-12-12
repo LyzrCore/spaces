@@ -79,6 +79,14 @@ class DemoApp:
     def build(self) -> gr.Blocks:
         """Build the complete Gradio application."""
         with gr.Blocks(title=self.config.title) as demo:
+            # Force light mode
+            gr.HTML("""
+            <script>
+                document.body.classList.remove('dark');
+                document.documentElement.style.colorScheme = 'light';
+            </script>
+            """, visible=False)
+
             # State for current item (for detail views)
             current_item = gr.State(None)
 
